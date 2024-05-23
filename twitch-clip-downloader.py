@@ -115,6 +115,7 @@ for clip in clip_list:
     if not os.path.isdir(dir):
         os.makedirs(dir)
     if os.path.exists(target_file):
+        print("Already exists")
         continue
 
     # download clip
@@ -122,6 +123,7 @@ for clip in clip_list:
     request = requests.get(download_url, allow_redirects=True)
     with open(target_file, 'wb') as file:
         file.write(request.content)
+    print("Done")
 
     # set metadata
     mp4file = MP4(target_file)
@@ -131,3 +133,4 @@ for clip in clip_list:
     mp4file['©ART'] = artist
     mp4file['©nam'] = clip['title']
     mp4file.save()
+    print("Metadata saved")
