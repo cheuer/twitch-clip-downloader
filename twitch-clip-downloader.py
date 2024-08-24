@@ -126,11 +126,15 @@ for clip in clip_list:
     print("Done")
 
     # set metadata
-    mp4file = MP4(target_file)
-    artist = str(args.metadata)
-    for token in tokens:
-        artist = artist.replace(token, tokens[token])
-    mp4file['©ART'] = artist
-    mp4file['©nam'] = clip['title']
-    mp4file.save()
-    print("Metadata saved")
+    try:
+        mp4file = MP4(target_file)
+        artist = str(args.metadata)
+        for token in tokens:
+            artist = artist.replace(token, tokens[token])
+        mp4file['©ART'] = artist
+        mp4file['©nam'] = clip['title']
+        mp4file.save()
+        print("Metadata saved")
+    except:
+        print("!!!!Error setting metadata!!!!")
+        os.unlink(target_file)
