@@ -24,8 +24,8 @@ parser.add_argument('-c', '--channel', help='Name of the channel to get clips fr
 parser.add_argument('-d', '--date', type=datetime.date.fromisoformat, help='Date from which to start downloading clips formatted YYYY-MM-DD. (default: one week ago (%(default)s))', default=datetime.date.today() - datetime.timedelta(days=7))
 parser.add_argument('-o', '--output_dir', help='Directory to output clips. (default: %(default)s)')
 parser.add_argument('-a', '--all', help='Download all clips instead of only featured clips', action='store_true')
-parser.add_argument('-f', '--filename', help='Set the desired filename using tokens %%d=date(iso), %%u=date(us), %%a=author, %%t=title, %%v=views, %%g=game', default='%d - %a - %t')
-parser.add_argument('-m', '--metadata', help='Set metadata artist field using same tokens as above', default='Clipped by %a %u')
+parser.add_argument('-f', '--filename', help='Set the desired filename using tokens %%d=date(iso), %%u=date(us), %%a=author, %%t=title, %%v=views, %%g=game. (default: %(default)s)', default='%d - %a - %t')
+parser.add_argument('-m', '--metadata', help='Set metadata artist field using same tokens as above. (default: %(default)s)', default='Clipped by %a %u')
 args = parser.parse_args()
 
 token_url = 'https://id.twitch.tv/oauth2/token'
