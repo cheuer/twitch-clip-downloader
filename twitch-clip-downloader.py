@@ -2,15 +2,21 @@
 import os
 import argparse
 import datetime
+import re
+import subprocess
 from dotenv import load_dotenv
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
 import requests
 from mutagen.mp4 import MP4
+import logging
+import sys
+
+logging.basicConfig(format="%(asctime)s:%(levelname)s:%(message)s")
+logger = logging.getLogger(__file__)
+
 
 # uncomment these for requests debug
-# import logging
-# import sys
 # log = logging.getLogger('requests_oauthlib')
 # log.addHandler(logging.StreamHandler(sys.stdout))
 # log.setLevel(logging.DEBUG)
@@ -26,7 +32,9 @@ parser.add_argument('-o', '--output_dir', help='Directory to output clips. (defa
 parser.add_argument('-a', '--all', help='Download all clips instead of only featured clips', action='store_true')
 parser.add_argument('-f', '--filename', help='Set the desired filename using tokens %%d=date(iso), %%u=date(us), %%a=author, %%t=title, %%v=views, %%g=game. (default: %(default)s)', default='%d - %a - %t')
 parser.add_argument('-m', '--metadata', help='Set metadata artist field using same tokens as above. (default: %(default)s)', default='Clipped by %a %u')
+parser.add_argument('-l', '--log', help='Set log level', default='info')
 args = parser.parse_args()
+logger.setLevel(args.log.upper())
 
 token_url = 'https://id.twitch.tv/oauth2/token'
 users_url = 'https://api.twitch.tv/helix/users'
@@ -61,7 +69,7 @@ while more == True:
     # print(json.dumps(res.json(), indent=4))
 
     if not res.json()['data'] and not clip_list:
-        print(f'No clips found after {args.date}')
+        logger.warning(f'No clips found after {args.date}')
         exit()
 
     clip_list += res.json()['data']
@@ -71,7 +79,7 @@ while more == True:
     else:
         more = False
 
-print(f"Retrieved {len(clip_list)} clips")
+logger.info(f"Retrieved {len(clip_list)} clips")
 
 game_list = {}
 if '%g' in args.filename or '%g' in args.metadata:
@@ -80,16 +88,17 @@ if '%g' in args.filename or '%g' in args.metadata:
     res = oauth.get(url=games_url + '?id=' + '&id='.join(list(game_list)), headers=headers)
     # print(res.json())
     if not res.json()['data']:
-        print('No games found')
+        logger.error('No games found')
         exit()
 
     for game in res.json()['data']:
         game_list[game['id']] = game['name']
 
 for clip in clip_list:
+    logger.info("---------------------------------------------------")
     i = clip['thumbnail_url'].index('-preview')
     download_url = clip['thumbnail_url'][:i] + '.mp4'
-    print(f"title: {clip['title']}, created_at: {clip['created_at']}, creator_name: {clip['creator_name']}, url: {download_url}")
+    logger.info(f"title: {clip['title']}, created_at: {clip['created_at']}, creator_name: {clip['creator_name']}, url: {download_url}")
     created_at = datetime.datetime.strptime(clip['created_at'], '%Y-%m-%dT%H:%M:%SZ')
     filename = str(args.filename)
     tokens = {
@@ -106,24 +115,31 @@ for clip in clip_list:
     filename += '.mp4'
     invalid_chars = '\\/:*?"<>|'
     filename = ''.join(c for c in filename if c not in invalid_chars)
-    print(f'filename: {filename}')
+    logger.debug(f'filename: {filename}')
 
     target_file = os.path.join(args.output_dir, filename)
-    print('target file: ' + target_file)
+    logger.debug('target file: ' + target_file)
 
     dir = os.path.dirname(target_file)
     if not os.path.isdir(dir):
         os.makedirs(dir)
     if os.path.exists(target_file):
-        print("Already exists")
+        logger.info("Already exists")
         continue
 
     # download clip
-    print(f'Downloading {filename}')
-    request = requests.get(download_url, allow_redirects=True)
-    with open(target_file, 'wb') as file:
-        file.write(request.content)
-    print("Done")
+    if re.search(r"/\.mp4", download_url):
+        logger.warning("Download url malformed, attempting to fallback to yt-dlp")
+        try:
+            subprocess.run(f"yt-dlp -o \"{target_file}\" {clip['url']}", check=True)
+        except:
+            logger.error("Error running yt-dlp, skipping this clip")
+            continue
+    else:
+        logger.info(f"Downloading {download_url}")
+        request = requests.get(download_url, allow_redirects=True)
+        with open(target_file, "wb") as file:
+            file.write(request.content)
 
     # set metadata
     try:
@@ -134,7 +150,7 @@ for clip in clip_list:
         mp4file['©ART'] = artist
         mp4file['©nam'] = clip['title']
         mp4file.save()
-        print("Metadata saved")
+        logger.info("Metadata saved")
     except:
-        print("!!!!Error setting metadata!!!!")
+        logger.error("!!!!Error setting metadata!!!!")
         os.unlink(target_file)
