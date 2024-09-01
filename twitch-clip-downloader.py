@@ -24,6 +24,11 @@ logger = logging.getLogger(__file__)
 load_dotenv()
 client_id = os.getenv("CLIENT_ID")
 client_secret = os.getenv("CLIENT_SECRET")
+if client_id is None or client_secret is None:
+    logger.error(
+        "You must set CLIENT_ID and CLIENT_SECRET in environment variables or in a .env file. See README."
+    )
+    exit(1)
 
 parser = argparse.ArgumentParser(description="Twitch clip downloader")
 parser.add_argument(
