@@ -1,22 +1,17 @@
-# import json
 import os
 import argparse
 import datetime
-import re
-import subprocess
 from dotenv import load_dotenv
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
-import requests
-from mutagen.mp4 import MP4
 import logging
-import sys
+import yt_dlp
 
 logging.basicConfig(format="%(asctime)s:%(levelname)s:%(message)s")
 logger = logging.getLogger(__file__)
 
-
 # uncomment these for requests debug
+# import sys
 # log = logging.getLogger('requests_oauthlib')
 # log.addHandler(logging.StreamHandler(sys.stdout))
 # log.setLevel(logging.DEBUG)
@@ -164,26 +159,30 @@ for clip in clip_list:
         continue
 
     # download clip
-    if re.search(r"/\.mp4", download_url):
-        logger.warning("Download url malformed, attempting to fallback to yt-dlp")
-        try:
-            subprocess.run(f"yt-dlp -o \"{target_file}\" {clip['url']}", check=True)
-        except:
-            logger.error("Error running yt-dlp, skipping this clip")
-            continue
-    else:
-        logger.info(f"Downloading {download_url}")
-        request = requests.get(download_url, allow_redirects=True)
-        with open(target_file, "wb") as file:
-            file.write(request.content)
-
-    # set metadata
-    try:
-        mp4file = MP4(target_file)
-        mp4file["©ART"] = artist
-        mp4file["©nam"] = clip["title"]
-        mp4file.save()
-        logger.info("Metadata saved")
-    except:
-        logger.error("!!!!Error setting metadata!!!!")
-        os.unlink(target_file)
+    url = clip["url"]
+    ydl_opts = {
+        "format": "mp4",
+        "logger": logger,
+        "outtmpl": {"default": filename},
+        "paths": {"home": args.output_dir},
+        "postprocessors": [
+            {
+                "actions": [
+                    (
+                        yt_dlp.postprocessor.metadataparser.MetadataParserPP.interpretter,
+                        artist,
+                        "%(artist)s",
+                    ),
+                ],
+                "key": "MetadataParser",
+                "when": "pre_process",
+            },
+            {
+                "add_metadata": True,
+                "key": "FFmpegMetadata",
+            },
+            {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"},
+        ],
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download(url)
