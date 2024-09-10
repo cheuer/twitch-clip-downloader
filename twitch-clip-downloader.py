@@ -84,7 +84,7 @@ broadcaster_id = res.json()["data"][0]["id"]
 params = {
     "broadcaster_id": broadcaster_id,
     "started_at": f"{args.date}T00:00:00Z",
-    "ended_at": f"{datetime.date.today() + datetime.timedelta(days=1)}T00:00:00Z",
+    "ended_at": f"{datetime.date.today() + datetime.timedelta(days=2)}T00:00:00Z",
 }
 if not args.all:
     params["is_featured"] = True
