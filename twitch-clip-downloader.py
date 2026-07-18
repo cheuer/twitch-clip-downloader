@@ -165,6 +165,11 @@ for clip in clip_list:
         "logger": logger,
         "outtmpl": {"default": filename},
         "paths": {"home": args.output_dir},
+        "retries": 10,
+        "sleep-subtitles": 5,
+        "sleep-requests": 0.75,
+        "sleep-interval": 10,
+        "max-sleep-interval": 20,
         "postprocessors": [
             {
                 "actions": [
